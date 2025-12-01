@@ -107,7 +107,7 @@
                  <!-- Flag & Lock Container -->
                  <div class="flex items-center gap-2">
                    <!-- Flag -->
-                   <div v-if="server.country" class="rounded overflow-hidden shadow-sm border border-white/10 w-6 h-4 flex-shrink-0 bg-gray-700">
+                   <div v-if="server.country" class="rounded overflow-hidden shadow-sm w-6 h-4 flex-shrink-0 bg-gray-700">
                       <img 
                         :src="`https://www.growthbunker.dev/images/vueflags/flags/${server.country.toLowerCase()}.svg`" 
                         :alt="server.country"
@@ -183,22 +183,22 @@
       </div>
 
       <!-- List View -->
-      <div v-else class="overflow-hidden bg-gray-800 shadow-xl rounded-xl border border-gray-700">
+      <div v-else class="overflow-x-auto bg-gray-800 shadow-xl rounded-xl border border-gray-700">
         <table class="min-w-full leading-normal">
           <thead>
             <tr class="bg-gray-900 border-b border-gray-700">
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Server Name</th>
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Map</th>
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Type</th>
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Players</th>
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Ping</th>
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden lg:table-cell">IP Address</th>
-              <th class="px-6 py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</th>
+              <th class="px-4 py-3 md:px-6 md:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Server Name</th>
+              <th class="px-4 py-3 md:px-6 md:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Map</th>
+              <th class="px-4 py-3 md:px-6 md:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Type</th>
+              <th class="px-4 py-3 md:px-6 md:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Players</th>
+              <th class="px-4 py-3 md:px-6 md:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Ping</th>
+              <th class="px-4 py-3 md:px-6 md:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden lg:table-cell">IP Address</th>
+              <th class="px-4 py-3 md:px-6 md:py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-700">
             <tr v-for="server in filteredServers" :key="server.id" @click="selectServer(server)" class="hover:bg-gray-750 cursor-pointer transition-colors duration-150 ease-in-out bg-gray-800">
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-4 py-3 md:px-6 md:py-4 whitespace-nowrap">
                 <div class="flex items-center">
                    <div v-if="isPrivate(server)" class="mr-3 text-yellow-500" title="Private Server">
                       <LockClosedIcon class="w-4 h-4" />
@@ -220,34 +220,34 @@
                    </div>
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-4 py-3 md:px-6 md:py-4 whitespace-nowrap hidden sm:table-cell">
                  <div class="flex items-center text-sm text-gray-300">
                     <MapIcon class="w-4 h-4 mr-1.5 text-gray-500" />
                     {{ server.mapname }}
                  </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-4 py-3 md:px-6 md:py-4 whitespace-nowrap hidden md:table-cell">
                 <span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-900/50 text-indigo-200 border border-indigo-700/50">
                   {{ server.gametype }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-4 py-3 md:px-6 md:py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-300 font-mono">
                    <span :class="getPlayerCountColor(server.numplayers, server.maxplayers)">{{ server.numplayers }}</span>
                    <span class="text-gray-600">/</span>
                    <span>{{ server.maxplayers }}</span>
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-4 py-3 md:px-6 md:py-4 whitespace-nowrap hidden sm:table-cell">
                  <div class="flex items-center gap-2">
                     <div class="w-2 h-2 rounded-full" :class="getPingColorDotClass(server.ping)"></div>
                     <span class="text-sm text-gray-300 font-mono">{{ server.ping || '-' }}ms</span>
                  </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+              <td class="px-4 py-3 md:px-6 md:py-4 whitespace-nowrap hidden lg:table-cell">
                  <span class="text-sm text-gray-400 font-mono">{{ server.ip }}:{{ server.hostport }}</span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <td class="px-4 py-3 md:px-6 md:py-4 whitespace-nowrap text-right text-sm font-medium">
                  <button 
                    @click.stop="copyAddress(server)" 
                    class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-600 rounded-md text-xs font-medium text-gray-200 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-indigo-500 transition-colors"
