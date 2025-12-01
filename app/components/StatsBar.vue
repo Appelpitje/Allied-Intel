@@ -9,7 +9,10 @@
           <span class="text-xs font-medium tracking-wider uppercase">Servers Online</span>
         </div>
         <div class="text-4xl font-bold text-green-500 drop-shadow-[0_0_10px_rgba(34,197,94,0.5)]">
-          {{ serversOnline }}
+          {{ totalServersOnline }}
+        </div>
+        <div class="text-sm font-medium text-gray-500 mt-1">
+          {{ selectedGameLabel }}: {{ selectedServersOnline }}
         </div>
       </div>
 
@@ -22,6 +25,9 @@
         <div class="text-4xl font-bold text-white">
           {{ totalListed }}
         </div>
+        <div class="text-sm font-medium text-gray-500 mt-1">
+          {{ selectedGameLabel }}: {{ selectedTotalListed }}
+        </div>
       </div>
 
       <!-- Players Active -->
@@ -31,7 +37,10 @@
           <span class="text-xs font-medium tracking-wider uppercase">Players Active</span>
         </div>
         <div class="text-4xl font-bold text-green-500 drop-shadow-[0_0_10px_rgba(34,197,94,0.5)]">
-          {{ playersActive }}
+          {{ totalPlayersActive }}
+        </div>
+        <div class="text-sm font-medium text-gray-500 mt-1">
+          {{ selectedGameLabel }}: {{ selectedPlayersActive }}
         </div>
       </div>
 
@@ -42,29 +51,76 @@
 <script setup lang="ts">
 import { ServerIcon, ListBulletIcon, UsersIcon } from '@heroicons/vue/24/outline';
 
+const props = defineProps<{
+  game?: 'mohaa' | 'mohaas' | 'mohaab';
+}>();
+
 const { getServers } = use333Networks();
 
-const serversOnline = ref(0);
+// Total stats (all games)
+const totalServersOnline = ref(0);
 const totalListed = ref(0);
-const playersActive = ref(0);
+const totalPlayersActive = ref(0);
+
+// Selected game stats
+const selectedServersOnline = ref(0);
+const selectedTotalListed = ref(0);
+const selectedPlayersActive = ref(0);
+
+const selectedGameLabel = computed(() => {
+  const g = props.game || 'mohaa';
+  return g.toUpperCase();
+});
+
+const games = ['mohaa', 'mohaas', 'mohaab'] as const;
 
 const fetchStats = async () => {
   try {
-    const response = await getServers();
-    if (Array.isArray(response) && response.length >= 2) {
-      const serverList = response[0];
-      const metadata = response[1];
-      
-      serversOnline.value = serverList.length;
-      totalListed.value = metadata.total || 0;
-      playersActive.value = metadata.players || 0;
-    }
+    let tOnline = 0;
+    let tListed = 0;
+    let tPlayers = 0;
+
+    // Fetch all games in parallel
+    const results = await Promise.all(games.map(g => getServers(g)));
+
+    results.forEach((response, index) => {
+      const gameKey = games[index];
+      if (Array.isArray(response) && response.length >= 2) {
+        const serverList = response[0];
+        const metadata = response[1];
+        
+        const online = serverList.length;
+        const listed = metadata.total || 0;
+        const players = metadata.players || 0;
+
+        // Add to totals
+        tOnline += online;
+        tListed += listed;
+        tPlayers += players;
+
+        // If this is the selected game, set selected stats
+        if (gameKey === (props.game || 'mohaa')) {
+          selectedServersOnline.value = online;
+          selectedTotalListed.value = listed;
+          selectedPlayersActive.value = players;
+        }
+      }
+    });
+
+    totalServersOnline.value = tOnline;
+    totalListed.value = tListed;
+    totalPlayersActive.value = tPlayers;
+
   } catch (e) {
     console.error("Failed to load stats", e);
   }
 };
 
 onMounted(() => {
+  fetchStats();
+});
+
+watch(() => props.game, () => {
   fetchStats();
 });
 </script>

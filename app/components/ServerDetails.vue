@@ -25,7 +25,10 @@
         <!-- Background Image -->
         <div class="absolute inset-0 bg-gray-800">
            <!-- Placeholder for map image, could use map name to fetch if available -->
-           <div class="absolute inset-0 bg-cover bg-center opacity-50" :style="`background-image: url('https://image.gametracker.com/images/maps/160x120/mohaa/${serverData?.mapname || 'dm/mohdm1'}.jpg')`"></div>
+           <div 
+             class="absolute inset-0 bg-cover bg-center opacity-50 transition-all duration-500" 
+             :style="{ backgroundImage: `url('${getMapImage(serverData?.mapname) || `https://image.gametracker.com/images/maps/160x120/${game || 'mohaa'}/${serverData?.mapname || 'dm/mohdm1'}.jpg`}')` }"
+           ></div>
            <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent"></div>
         </div>
         
@@ -55,7 +58,6 @@
                     <div>
                        <div class="text-gray-400 text-sm font-medium mb-1">Current Map</div>
                        <div class="text-white font-semibold text-lg">{{ serverData?.mapname }}</div>
-                       <div class="text-gray-500 text-xs mt-1 font-mono truncate">obj/obj_team2</div>
                     </div>
                  </div>
               </div>
@@ -250,16 +252,25 @@ import {
   UserGroupIcon, 
   SignalIcon 
 } from '@heroicons/vue/24/outline';
+import mapConfig from '../../assets/maps.json';
 
 const props = defineProps<{
   ip: string;
   port: number;
+  game?: 'mohaa' | 'mohaas' | 'mohaab';
   initialData?: any;
 }>();
 
 defineEmits(['back']);
 
 const { getServerDetails } = use333Networks();
+
+// Map images logic
+const mapAssets = import.meta.glob('../../assets/images/maps/*.{webp,png,jpg,jpeg}', {
+  eager: true,
+  import: 'default',
+}) as Record<string, string>;
+
 const serverData = ref<any>(props.initialData || null);
 const players = ref<any[]>([]);
 const loading = ref(true);
@@ -321,7 +332,7 @@ const getGametypeName = (type: string) => {
     'tdm': 'Team Deathmatch',
     'obj': 'Objective',
     'ft': 'Freeze Tag',
-    'ca': 'Countdown'
+    'c': 'Countdown'
   };
   return map[type?.toLowerCase()] || type || 'Unknown';
 };
@@ -339,11 +350,46 @@ const copyIp = () => {
   // Could add toast here
 };
 
+const getMapImage = (mapName: string) => {
+  if (!mapName) return null;
+  let cleanMapName = mapName.toLowerCase();
+  
+  // Check JSON mapping
+  const config = mapConfig as Record<string, string>;
+  let configPath = config[cleanMapName];
+
+  // If not found and has path prefix (e.g. dm/mohdm1), try basename
+  if (!configPath && cleanMapName.includes('/')) {
+    const parts = cleanMapName.split('/');
+    const baseName = parts[parts.length - 1];
+    if (baseName) {
+      configPath = config[baseName];
+    }
+  }
+
+  if (configPath) {
+    // Try to find the asset in glob results
+    // We try common variations of the path
+    const variants = [
+      configPath,
+      `/${configPath}`,
+      `~/${configPath}`,
+      `@/${configPath}`,
+      `../../${configPath}`
+    ];
+    
+    for (const v of variants) {
+      if (v && mapAssets[v]) return mapAssets[v];
+    }
+  }
+  return null;
+};
+
 const fetchDetails = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const data = await getServerDetails(props.ip, props.port);
+    const data = await getServerDetails(props.ip, props.port, props.game || 'mohaa');
     
     // Decode hostname if present in new data
     if (data.hostname) {
@@ -385,7 +431,7 @@ onMounted(() => {
   fetchDetails();
 });
 
-watch(() => [props.ip, props.port], () => {
+watch(() => [props.ip, props.port, props.game], () => {
   fetchDetails();
 });
 </script>

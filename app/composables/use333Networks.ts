@@ -34,8 +34,8 @@ export const use333Networks = () => {
     }
   };
 
-  const getServers = async () => {
-    const cacheKey = "mohaa_server_list";
+  const getServers = async (game: 'mohaa' | 'mohaas' | 'mohaab' = 'mohaa') => {
+    const cacheKey = `${game}_server_list`;
     const cachedData = getFromCache<any>(cacheKey);
 
     if (cachedData) {
@@ -47,7 +47,7 @@ export const use333Networks = () => {
       // Assuming direct call is possible or Nuxt handles it via server route if needed.
       // For now, we'll try direct client-side fetch. 
       // If CORS is an issue, we might need a server proxy.
-      const response = await fetch("https://master.333networks.com/json/mohaa");
+      const response = await fetch(`https://master.333networks.com/json/${game}`);
       if (!response.ok) {
         throw new Error(`API Error: ${response.statusText}`);
       }
@@ -60,8 +60,8 @@ export const use333Networks = () => {
     }
   };
 
-  const getServerDetails = async (ip: string, port: number) => {
-    const cacheKey = `mohaa_server_${ip}:${port}`;
+  const getServerDetails = async (ip: string, port: number, game: 'mohaa' | 'mohaas' | 'mohaab' = 'mohaa') => {
+    const cacheKey = `${game}_server_${ip}:${port}`;
     const cachedData = getFromCache<any>(cacheKey);
 
     if (cachedData) {
@@ -69,7 +69,7 @@ export const use333Networks = () => {
     }
 
     try {
-      const response = await fetch(`https://master.333networks.com/json/mohaa/${ip}:${port}`);
+      const response = await fetch(`https://master.333networks.com/json/${game}/${ip}:${port}`);
       if (!response.ok) {
         throw new Error(`API Error: ${response.statusText}`);
       }

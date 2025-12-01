@@ -1,7 +1,22 @@
 <template>
   <div class="container mx-auto px-4 pb-8 pt-2">
+    <!-- Game Selector Tabs -->
+    <div class="flex justify-center mb-8">
+      <div class="bg-gray-900 p-1 rounded-xl border border-gray-800 inline-flex animate-none transform-none">
+        <button 
+          v-for="g in games" 
+          :key="g.id"
+          @click="$emit('update:game', g.id)"
+          class="px-6 py-2.5 rounded-lg text-sm font-medium"
+          :class="[game === g.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800']"
+        >
+          {{ g.name }}
+        </button>
+      </div>
+    </div>
+
     <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
-      <h1 class="text-3xl font-bold text-white">MOHAA Server List</h1>
+      <h1 class="text-3xl font-bold text-white">{{ gameName }} Server List</h1>
       
       <!-- View Toggle -->
       <div class="flex bg-gray-900 rounded-lg p-1 border border-gray-800 self-start sm:self-auto">
@@ -100,7 +115,15 @@
            <!-- Card Header / Background -->
            <div class="h-32 bg-gradient-to-br from-gray-800 to-gray-900 relative p-4 flex flex-col justify-between shrink-0">
               <!-- Background Pattern/Image placeholder -->
-              <div class="absolute inset-0 opacity-30 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+              <div 
+                class="absolute inset-0 transition-all duration-500"
+                :class="[
+                  hasCustomMapImage(server.mapname) 
+                    ? 'bg-cover bg-center opacity-50' 
+                    : 'bg-[url(\'https://www.transparenttextures.com/patterns/carbon-fibre.png\')] opacity-30'
+                ]"
+                :style="hasCustomMapImage(server.mapname) ? { backgroundImage: `url('${getMapImage(server.mapname)}')` } : {}"
+              ></div>
               <div class="absolute inset-0 bg-gradient-to-t from-gray-800 to-transparent"></div>
 
               <div class="relative z-10 flex justify-between items-start">
@@ -278,15 +301,32 @@ import {
   ClipboardDocumentIcon
 } from '@heroicons/vue/24/outline';
 import { Switch, SwitchGroup, SwitchLabel, Listbox, ListboxButton, ListboxOptions, ListboxOption } from '@headlessui/vue';
+import mapConfig from '../../assets/maps.json';
 
-const emit = defineEmits(['select-server']);
+const props = defineProps<{
+  game?: 'mohaa' | 'mohaas' | 'mohaab';
+}>();
+
+const emit = defineEmits(['select-server', 'update:game']);
 const { getServers, getServerDetails } = use333Networks();
+
+// Map images logic
+const mapAssets = import.meta.glob('../../assets/images/maps/*.{webp,png,jpg,jpeg}', {
+  eager: true,
+  import: 'default',
+}) as Record<string, string>;
 
 const servers = ref<any[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
 const totalPlayers = ref(0);
 const totalServers = ref(0);
+
+const games = [
+  { id: 'mohaa', name: 'MOHAA' },
+  { id: 'mohaas', name: 'Spearhead' },
+  { id: 'mohaab', name: 'Breakthrough' }
+];
 
 // View State
 const viewMode = ref<'grid' | 'list'>('grid');
@@ -298,6 +338,10 @@ const hideEmpty = ref(false);
 const hidePassworded = ref(false);
 
 // Computed Properties
+const gameName = computed(() => {
+  return games.find(g => g.id === props.game)?.name || 'MOHAA';
+});
+
 const gametypes = computed(() => {
   const types = new Set(servers.value.map(s => s.gametype));
   return ['All Types', ...Array.from(types).filter(Boolean).sort()];
@@ -341,7 +385,7 @@ const fetchServers = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const response = await getServers();
+    const response = await getServers(props.game || 'mohaa');
     // API returns [ [serverList], { metadata } ]
     if (Array.isArray(response) && response.length >= 2) {
       servers.value = response[0].map((server: any) => ({
@@ -373,7 +417,7 @@ const fetchPlayerPings = async () => {
   
   for (const server of serversWithPlayers) {
     try {
-      const details = await getServerDetails(server.ip, server.hostport);
+      const details = await getServerDetails(server.ip, server.hostport, props.game || 'mohaa');
       let totalPing = 0;
       let playerCount = 0;
       
@@ -382,7 +426,7 @@ const fetchPlayerPings = async () => {
       while (details[`player_${i}`]) {
         const player = details[`player_${i}`];
         const ping = parseInt(player.ping);
-        if (!isNaN(ping)) {
+        if (!isNaN(ping) && ping !== 999) {
           totalPing += ping;
           playerCount++;
         }
@@ -456,7 +500,50 @@ const handleImageError = (e: Event) => {
    (e.target as HTMLImageElement).style.display = 'none';
 };
 
+const getMapImage = (mapName: string) => {
+  if (!mapName) return null;
+  let cleanMapName = mapName.toLowerCase();
+  
+  // Check JSON mapping with full name first
+  const config = mapConfig as Record<string, string>;
+  let configPath = config[cleanMapName];
+
+  // If not found and has path prefix (e.g. dm/mohdm1), try basename
+  if (!configPath && cleanMapName.includes('/')) {
+    const parts = cleanMapName.split('/');
+    const baseName = parts[parts.length - 1];
+    if (baseName) {
+      configPath = config[baseName];
+    }
+  }
+
+  if (configPath) {
+    // Try to find the asset in glob results
+    // We try common variations of the path
+    const variants = [
+      configPath,
+      `/${configPath}`,
+      `~/${configPath}`,
+      `@/${configPath}`,
+      `../../${configPath}`
+    ];
+    
+    for (const v of variants) {
+      if (v && mapAssets[v]) return mapAssets[v];
+    }
+  }
+  return null;
+};
+
+const hasCustomMapImage = (mapName: string) => {
+  return !!getMapImage(mapName);
+};
+
 onMounted(() => {
+  fetchServers();
+});
+
+watch(() => props.game, () => {
   fetchServers();
 });
 </script>

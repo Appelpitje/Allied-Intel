@@ -10,8 +10,18 @@ const port = portStr ? parseInt(portStr) : NaN;
 // Get initial data from history state if available (client-side navigation)
 const initialData = import.meta.client && history.state ? history.state.serverData : null;
 
+// Get game from query param or history state, default to 'mohaa'
+const game = computed(() => {
+  const fromQuery = route.query.game as string;
+  const fromState = import.meta.client && history.state ? history.state.game : null;
+  return (fromQuery || fromState || 'mohaa') as 'mohaa' | 'mohaas' | 'mohaab';
+});
+
 const handleBack = () => {
-  router.push('/');
+  router.push({
+    path: '/',
+    query: { game: game.value } // Preserve game selection on back
+  });
 };
 
 // Validate IP and Port
@@ -28,6 +38,7 @@ if (!ip || isNaN(port)) {
       v-if="ip && !isNaN(port)"
       :ip="ip" 
       :port="port" 
+      :game="game"
       :initial-data="initialData"
       @back="handleBack"
     />
