@@ -1,3 +1,13 @@
 {
-  "mohdm1": "assets/images/maps/mohdm1.webp"
+  "mohdm1": "assets/images/maps/mohdm1.webp",
+  "mohdm2": "assets/images/maps/mohdm2.webp",
+  "mohdm3": "assets/images/maps/mohdm3.webp",
+  "mohdm4": "assets/images/maps/mohdm4.webp",
+  "mohdm5": "assets/images/maps/mohdm5.webp",
+  "mohdm6": "assets/images/maps/mohdm6.webp",
+  "mohdm7": "assets/images/maps/mohdm7.webp",
+  "obj_team1": "assets/images/maps/objdm1.webp",
+  "obj_team2": "assets/images/maps/objdm2.webp",
+  "obj_team3": "assets/images/maps/objdm4.webp",
+  "obj_team4": "assets/images/maps/objdm5.webp"
 }
