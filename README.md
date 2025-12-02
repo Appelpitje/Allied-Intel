@@ -1,6 +1,22 @@
-# Nuxt Minimal Starter
+# Allied-Intel
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Allied-Intel is a web application built with Nuxt 4 that provides real-time server statistics and server browsing for Medal of Honor: Allied Assault games, including the main game (MOHAA), Spearhead (MOHAAS), and Breakthrough (MOHAAB).
+
+The application fetches data from the [333networks](https://333networks.com/) API to display server lists, player counts, and detailed server information.
+
+## Features
+
+- **Server Browser:** Browse active servers for MOHAA, MOHAAS, and MOHAAB.
+- **Real-time Stats:** View global player and server counts.
+- **Server Details:** Inspect specific server details including player lists and settings.
+- **Modern UI:** Built with Tailwind CSS for a responsive and clean interface.
+
+## Tech Stack
+
+- **Framework:** [Nuxt 4](https://nuxt.com/)
+- **UI Library:** [Vue 3](https://vuejs.org/)
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/)
+- **Icons:** [Heroicons](https://heroicons.com/)
 
 ## Setup
 
@@ -72,4 +88,6 @@ yarn preview
 bun run preview
 ```
 
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+## License
+
+This project is open source.

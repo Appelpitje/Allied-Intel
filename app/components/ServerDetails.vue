@@ -26,7 +26,7 @@
         <div class="absolute inset-0 bg-gray-800">
            <!-- Placeholder for map image, could use map name to fetch if available -->
            <div 
-             class="absolute inset-0 bg-cover bg-center opacity-50 transition-all duration-500" 
+             class="absolute inset-0 bg-cover bg-center opacity-80 transition-all duration-500" 
              :style="{ backgroundImage: `url('${getMapImage(serverData?.mapname) || `https://image.gametracker.com/images/maps/160x120/${game || 'mohaa'}/${serverData?.mapname || 'dm/mohdm1'}.jpg`}')` }"
            ></div>
            <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent"></div>
@@ -250,7 +250,9 @@
                 <DiscordEmbedPreview 
                   v-if="serverData" 
                   :server="{ ...serverData, ip, port }" 
-                  :game="game" 
+                  :game="game"
+                  :image="getMapImage(serverData.mapname)"
+                  :players="players"
                 />
               </div>
 
@@ -259,6 +261,17 @@
                  Copy Link
               </button>
            </div>
+
+           <!-- Server Banner -->
+           <ServerBanner 
+             v-if="serverData"
+             :server="serverData"
+             :game="game"
+             :ip="ip"
+             :port="port"
+             :image="getMapImage(serverData.mapname)"
+             :players="players"
+           />
         </div>
       </div>
 
@@ -291,12 +304,6 @@ const props = defineProps<{
 defineEmits(['back']);
 
 const { getServerDetails } = use333Networks();
-
-// Map images logic
-const mapAssets = import.meta.glob('../../assets/images/maps/*.{webp,png,jpg,jpeg}', {
-  eager: true,
-  import: 'default',
-}) as Record<string, string>;
 
 const serverData = ref<any>(props.initialData || null);
 const players = ref<any[]>([]);
@@ -382,6 +389,8 @@ const copyLink = () => {
   navigator.clipboard.writeText(url);
 };
 
+// Map images logic
+// We now use public images defined in maps.json
 const getMapImage = (mapName: string) => {
   if (!mapName) return null;
   let cleanMapName = mapName.toLowerCase();
@@ -399,22 +408,7 @@ const getMapImage = (mapName: string) => {
     }
   }
 
-  if (configPath) {
-    // Try to find the asset in glob results
-    // We try common variations of the path
-    const variants = [
-      configPath,
-      `/${configPath}`,
-      `~/${configPath}`,
-      `@/${configPath}`,
-      `../../${configPath}`
-    ];
-    
-    for (const v of variants) {
-      if (v && mapAssets[v]) return mapAssets[v];
-    }
-  }
-  return null;
+  return configPath || null;
 };
 
 const fetchDetails = async () => {
