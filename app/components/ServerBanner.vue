@@ -8,65 +8,16 @@
     </div>
 
     <div class="space-y-6">
-      <div class="text-gray-400 text-sm">Preview</div>
 
-      <!-- Banner Preview Card -->
-      <div class="relative overflow-hidden rounded-xl border border-gray-700 bg-gray-900 shadow-2xl max-w-xl mx-auto sm:mx-0">
-        <!-- Background Image with Overlay -->
-        <div class="absolute inset-0 z-0">
-          <div 
-            class="absolute inset-0 bg-cover bg-center transition-all duration-500" 
-            :style="{ backgroundImage: `url('${image || ''}')` }"
-          ></div>
-          <div class="absolute inset-0 bg-gray-900/90 backdrop-blur-[1px]"></div>
-        </div>
-
-        <!-- Content -->
-        <div class="relative z-10 p-6 font-mono">
-          <!-- Top Row: Status & Ping -->
-          <div class="flex justify-between items-start mb-4">
-            <div class="flex items-center gap-2">
-              <div class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
-              <span class="text-green-500 font-bold tracking-wider text-sm">ALLIED INTEL</span>
-            </div>
-            <div class="px-3 py-1 bg-green-500/20 border border-green-500/30 rounded text-green-400 text-xs font-bold">
-              {{ averagePing }}ms • GOOD
-            </div>
-          </div>
-
-          <!-- Server Name -->
-          <h3 class="text-white font-bold text-xl mb-6 truncate">{{ server.hostname }}</h3>
-
-          <!-- Stats Grid -->
-          <div class="grid grid-cols-3 gap-4 mb-4">
-            <div>
-              <div class="text-gray-500 text-[10px] uppercase tracking-wider font-bold mb-1">MAP</div>
-              <div class="text-gray-200 font-medium truncate">{{ server.mapname }}</div>
-            </div>
-            <div>
-              <div class="text-gray-500 text-[10px] uppercase tracking-wider font-bold mb-1">MODE</div>
-              <div class="text-gray-200 font-medium truncate">{{ server.gametype }}</div>
-            </div>
-            <div>
-              <div class="text-gray-500 text-[10px] uppercase tracking-wider font-bold mb-1">PLAYERS</div>
-              <div class="text-gray-200 font-medium">{{ server.numplayers }}/{{ server.maxplayers }}</div>
-            </div>
-          </div>
-
-          <!-- Progress Bar -->
-          <div class="w-full bg-gray-800 rounded-full h-1.5 mb-4 overflow-hidden">
-            <div 
-              class="h-full bg-green-500 rounded-full transition-all duration-500"
-              :style="{ width: `${playerPercentage}%` }"
-            ></div>
-          </div>
-
-          <!-- Footer: IP & Game -->
-          <div class="flex justify-between items-center text-gray-500 text-sm">
-            <div class="font-mono">{{ ip }}:{{ port }}</div>
-            <div>{{ gameName }}</div>
-          </div>
-        </div>
+      <!-- Banner Preview - Show actual generated image -->
+      <div class="flex justify-center">
+        <a :href="serverUrl" target="_blank" class="block hover:opacity-90 transition-opacity">
+          <img 
+            :src="bannerImageUrl" 
+            :alt="`${server.hostname} Server Banner`"
+            class="rounded-lg border border-gray-700 shadow-lg"
+          />
+        </a>
       </div>
 
       <!-- Controls -->
@@ -116,7 +67,6 @@
 import { ref, computed } from 'vue';
 import { 
   ArrowTopRightOnSquareIcon, 
-  LinkIcon, 
   CodeBracketIcon, 
   CommandLineIcon,
   ClipboardDocumentIcon,
@@ -132,11 +82,10 @@ const props = defineProps<{
   players?: any[];
 }>();
 
-const activeTab = ref('link');
+const activeTab = ref('html');
 const copied = ref(false);
 
 const tabs = [
-  { id: 'link', label: 'Link', icon: LinkIcon },
   { id: 'html', label: 'HTML', icon: CodeBracketIcon },
   { id: 'bbcode', label: 'BBCode', icon: CommandLineIcon },
 ];
@@ -164,21 +113,36 @@ const averagePing = computed(() => {
   return Math.round(total / props.players.length);
 });
 
+// Get the current URL (works in both SSR and client)
+const requestUrl = useRequestURL();
+
+const serverUrl = computed(() => {
+  if (typeof window !== 'undefined') {
+    return window.location.href;
+  }
+  return `${requestUrl.protocol}//${requestUrl.host}/${props.ip}:${props.port}?game=${props.game}`;
+});
+
+const bannerImageUrl = computed(() => {
+  // Always use the current origin (localhost in dev, workers.dev in production)
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/api/banner?ip=${props.ip}&port=${props.port}&game=${props.game || 'mohaa'}`;
+  }
+  // SSR fallback - use request URL
+  return `${requestUrl.protocol}//${requestUrl.host}/api/banner?ip=${props.ip}&port=${props.port}&game=${props.game || 'mohaa'}`;
+});
+
 const generatedCode = computed(() => {
-  const url = typeof window !== 'undefined' ? window.location.href : `https://allied-intel.com/server/${props.ip}:${props.port}`;
-  // Fallback image if we can't generate a dynamic one. Ideally this would be a dynamic image service.
-  // For now, using the map image or a placeholder.
-  const imgUrl = props.image || 'https://allied-intel.com/banner-placeholder.jpg'; 
+  const url = serverUrl.value;
+  const imgUrl = bannerImageUrl.value;
   
   switch (activeTab.value) {
-    case 'link':
-      return url;
     case 'html':
-      return `<a href="${url}"><img src="${imgUrl}" alt="${props.server.hostname} Banner"></a>`;
+      return `<a href="${url}"><img src="${imgUrl}" alt="${props.server.hostname} Server Banner"></a>`;
     case 'bbcode':
       return `[url=${url}][img]${imgUrl}[/img][/url]`;
     default:
-      return url;
+      return `<a href="${url}"><img src="${imgUrl}" alt="${props.server.hostname} Server Banner"></a>`;
   }
 });
 
