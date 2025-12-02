@@ -1,5 +1,7 @@
 import satori from 'satori';
-import { Resvg } from '@resvg/resvg-wasm';
+import { Resvg, initWasm } from '@resvg/resvg-wasm';
+// @ts-ignore
+import resvgWasm from '@resvg/resvg-wasm/index_bg.wasm';
 import mapConfig from '../../assets/maps.json';
 
 // Helper to create Satori nodes
@@ -25,6 +27,14 @@ export default defineEventHandler(async (event) => {
     }
 
     try {
+        // Initialize WASM
+        try {
+            await initWasm(resvgWasm);
+        } catch (e) {
+            // Ignore if already initialized
+             // console.log('WASM init error (might be already initialized):', e);
+        }
+
         // Fetch server details
         const serverData: any = await $fetch('/api/333networks/details', {
             query: { game, ip, port }
