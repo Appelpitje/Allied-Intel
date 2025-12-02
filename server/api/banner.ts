@@ -1,5 +1,15 @@
-import { createCanvas } from 'canvas';
+import satori from 'satori';
+import { Resvg } from '@resvg/resvg-wasm';
 import mapConfig from '../../assets/maps.json';
+
+// Helper to create Satori nodes
+const h = (type: string, props: any = {}, children: any[] | string = []) => ({
+    type,
+    props: {
+        ...props,
+        children,
+    },
+});
 
 export default defineEventHandler(async (event) => {
     const query = getQuery(event);
@@ -15,205 +25,253 @@ export default defineEventHandler(async (event) => {
     }
 
     try {
-        // Fetch server details directly from the API
+        // Fetch server details
         const serverData: any = await $fetch('/api/333networks/details', {
-            query: {
-                game,
-                ip,
-                port
-            }
+            query: { game, ip, port }
         });
 
-        // Create canvas (550x95 for better visibility)
-        const width = 550;
-        const height = 95;
-        const canvas = createCanvas(width, height);
-        const ctx = canvas.getContext('2d');
+        // 1. Load Font (Inter Bold)
+        // Using a reliable CDN for the font file
+        const fontData = await fetch('https://cdn.jsdelivr.net/npm/@fontsource/inter/files/inter-latin-700-normal.woff')
+            .then(res => res.arrayBuffer());
 
-        // Background gradient
-        const gradient = ctx.createLinearGradient(0, 0, width, 0);
-        gradient.addColorStop(0, '#1f2937');
-        gradient.addColorStop(1, '#111827');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, width, height);
-
-        // Try to load and draw map image on the RIGHT
-        const mapImageWidth = 180;
-        const mapImageHeight = 95;
-
+        // 2. Load Map Image
+        let mapImageData = '';
         try {
-            const path = await import('path');
-            const fs = await import('fs');
-
-            // Get map name and find image
             const mapName = serverData.mapname?.toLowerCase() || '';
             let mapPath = (mapConfig as Record<string, string>)[mapName];
 
-            // Try basename if full path not found
             if (!mapPath && mapName.includes('/')) {
                 const baseName = mapName.split('/').pop();
                 if (baseName) {
                     mapPath = (mapConfig as Record<string, string>)[baseName];
-                    if (mapPath) {
-                        console.log(`Found map via basename: ${baseName} (original: ${mapName})`);
-                    }
                 }
-            } else if (mapPath) {
-                console.log(`Found map directly: ${mapName}`);
             }
 
             if (mapPath) {
-                // Convert to absolute file path
-                const absolutePath = path.join(process.cwd(), 'public', mapPath);
+                // Construct full URL using request origin
+                const reqUrl = getRequestURL(event);
+                // Remove leading slash if present in mapPath to avoid double slashes
+                const cleanMapPath = mapPath.startsWith('/') ? mapPath.slice(1) : mapPath;
+                const imageUrl = `${reqUrl.origin}/${cleanMapPath}`;
 
-                console.log('Trying to load image from:', absolutePath);
-                console.log('File exists?', fs.existsSync(absolutePath));
-
-                // Check if file exists before trying to load
-                if (fs.existsSync(absolutePath)) {
-                    // Use sharp to convert WebP to PNG buffer (canvas can't load WebP directly)
-                    const sharp = (await import('sharp')).default;
-                    const { loadImage } = await import('canvas');
-
-                    // Convert WebP to PNG buffer
-                    const pngBuffer = await sharp(absolutePath).png().toBuffer();
-                    const mapImage = await loadImage(pngBuffer);
-
-                    console.log('Image loaded successfully, size:', mapImage.width, 'x', mapImage.height);
-
-                    // Draw map image on the RIGHT with slight opacity overlay
-                    const mapX = width - mapImageWidth;
-                    ctx.save();
-                    ctx.globalAlpha = 0.5; // Increased from 0.4 for better visibility
-                    ctx.drawImage(mapImage, mapX, 0, mapImageWidth, mapImageHeight);
-                    ctx.restore();
-
-                    // Add gradient overlay on map area (from right to left)
-                    const mapGradient = ctx.createLinearGradient(mapX, 0, width, 0);
-                    mapGradient.addColorStop(0, 'rgba(31, 41, 55, 0)');
-                    mapGradient.addColorStop(1, 'rgba(31, 41, 55, 0.6)'); // Slightly less dark
-                    ctx.fillStyle = mapGradient;
-                    ctx.fillRect(mapX, 0, mapImageWidth, mapImageHeight);
-                } else {
-                    console.log('File does not exist at path:', absolutePath);
+                try {
+                    const imageBuffer = await fetch(imageUrl).then(res => {
+                        if (!res.ok) throw new Error(`Failed to fetch image: ${res.statusText}`);
+                        return res.arrayBuffer();
+                    });
+                    
+                    const base64 = Buffer.from(imageBuffer).toString('base64');
+                    // Determine mime type based on extension
+                    const ext = mapPath.split('.').pop()?.toLowerCase();
+                    const mime = ext === 'png' ? 'image/png' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/webp';
+                    mapImageData = `data:${mime};base64,${base64}`;
+                } catch (e) {
+                    console.error('Failed to fetch map image:', imageUrl, e);
                 }
-            } else {
-                console.log('No map path found in config for:', mapName);
             }
-        } catch (mapError) {
-        // If map image fails to load, just continue without it
-        console.error('Could not load map image:', mapError);
+        } catch (e) {
+            console.error('Map image processing error:', e);
+        }
+
+        // 3. Prepare Data
+        const decodeHtmlEntities = (text: string) => {
+            return text
+                .replace(/&/g, '&')
+                .replace(/</g, '<')
+                .replace(/>/g, '>')
+                .replace(/"/g, '"')
+                .replace(/&#039;/g, "'");
+        };
+
+        const hostname = serverData.hostname ? decodeHtmlEntities(serverData.hostname) : `${ip}:${port}`;
+        // Truncate hostname manually if needed, but flexbox handles overflow better
+        // Let's just truncate strictly to avoid layout issues
+        const displayHostname = hostname.length > 35 ? hostname.slice(0, 32) + '...' : hostname;
+        
+        const statsText = [
+            `Map: ${serverData.mapname || 'Unknown'}`,
+            `Players: ${serverData.numplayers || 0}/${serverData.maxplayers || 0}`,
+            `Mode: ${serverData.gametype || 'Unknown'}`
+        ].join(' • ');
+
+        const playerPercentage = serverData.maxplayers > 0
+            ? (serverData.numplayers / serverData.maxplayers) * 100
+            : 0;
+
+        // 4. Define Layout (Satori)
+        const height = 95;
+        const width = 550;
+
+        const markup = h('div', {
+            style: {
+                height: '100%',
+                width: '100%',
+                display: 'flex',
+                flexDirection: 'row',
+                background: 'linear-gradient(90deg, #1f2937 0%, #111827 100%)',
+                border: '2px solid #374151',
+                position: 'relative',
+                overflow: 'hidden',
+                fontFamily: 'Inter',
+            }
+        }, [
+            // Map Image Background (Right side)
+            mapImageData ? h('div', {
+                style: {
+                    position: 'absolute',
+                    right: 0,
+                    top: 0,
+                    width: '180px',
+                    height: '100%',
+                    display: 'flex',
+                    backgroundImage: `url(${mapImageData})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    opacity: 0.5,
+                    maskImage: 'linear-gradient(to left, black 0%, transparent 100%)', // This might not work in Satori yet
+                    // Alternative gradient overlay
+                }
+            }, [
+                // Gradient Overlay for smooth transition
+                h('div', {
+                    style: {
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        width: '100%',
+                        height: '100%',
+                        background: 'linear-gradient(to right, #1f2937 0%, transparent 100%)',
+                    }
+                })
+            ]) : null,
+
+            // Content Container
+            h('div', {
+                style: {
+                    display: 'flex',
+                    flexDirection: 'column',
+                    padding: '20px',
+                    width: '100%',
+                    position: 'relative',
+                    zIndex: 10,
+                }
+            }, [
+                // Top Row: Status + Hostname
+                h('div', {
+                    style: {
+                        display: 'flex',
+                        alignItems: 'center',
+                        marginBottom: '8px',
+                    }
+                }, [
+                    // Status Dot
+                    h('div', {
+                        style: {
+                            width: '12px',
+                            height: '12px',
+                            borderRadius: '50%',
+                            backgroundColor: '#10b981',
+                            marginRight: '12px',
+                        }
+                    }),
+                    // Hostname
+                    h('div', {
+                        style: {
+                            color: '#ffffff',
+                            fontSize: '16px',
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '320px',
+                        }
+                    }, displayHostname)
+                ]),
+
+                // Stats Row
+                h('div', {
+                    style: {
+                        color: '#9ca3af',
+                        fontSize: '13px',
+                        marginBottom: '12px',
+                        display: 'flex',
+                    }
+                }, statsText),
+
+                // Progress Bar
+                h('div', {
+                    style: {
+                        width: '240px',
+                        height: '6px',
+                        backgroundColor: '#374151',
+                        display: 'flex',
+                        borderRadius: '2px',
+                        overflow: 'hidden',
+                    }
+                }, [
+                    h('div', {
+                        style: {
+                            width: `${playerPercentage}%`,
+                            height: '100%',
+                            backgroundColor: '#10b981',
+                        }
+                    })
+                ]),
+            ]),
+
+            // Branding
+            h('div', {
+                style: {
+                    position: 'absolute',
+                    bottom: '10px',
+                    right: '15px',
+                    color: '#6366f1',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    zIndex: 20,
+                }
+            }, 'ALLIED-INTEL')
+        ]);
+
+        // 5. Generate SVG
+        const svg = await satori(markup, {
+            width,
+            height,
+            fonts: [
+                {
+                    name: 'Inter',
+                    data: fontData,
+                    weight: 700,
+                    style: 'normal',
+                },
+            ],
+        });
+
+        // 6. Convert to PNG
+        const resvg = new Resvg(svg, {
+            fitTo: {
+                mode: 'width',
+                value: width,
+            },
+        });
+        const pngData = resvg.render();
+        const pngBuffer = pngData.asPng();
+
+        setHeader(event, 'Content-Type', 'image/png');
+        setHeader(event, 'Cache-Control', 'public, max-age=60');
+        
+        return pngBuffer;
+
+    } catch (error) {
+        console.error('Banner generation error:', error);
+        
+        // Error Fallback (Simplified)
+        // We can return a basic SVG or use Satori again for error state
+        // For now, just return text error
+        throw createError({
+            statusCode: 500,
+            statusMessage: 'Failed to generate banner'
+        });
     }
-
-    // Border
-    ctx.strokeStyle = '#374151';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(0, 0, width, height);
-
-    // Status indicator (green dot) - back to left since map is on right
-    const contentStartX = 20;
-    ctx.fillStyle = '#10b981';
-    ctx.beginPath();
-    ctx.arc(contentStartX, 22, 6, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Text styling
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 16px sans-serif';
-
-    // Decode HTML entities in hostname
-    const decodeHtmlEntities = (text: string) => {
-        return text
-            .replace(/&/g, '&')
-            .replace(/</g, '<')
-            .replace(/>/g, '>')
-            .replace(/"/g, '"')
-            .replace(/&#039;/g, "'");
-    };
-
-    // Server name (truncated if too long)
-    const hostname = serverData.hostname ? decodeHtmlEntities(serverData.hostname) : `${ip}:${port}`;
-    const maxHostnameWidth = 300; // Increased for larger banner
-    let displayHostname = hostname;
-    let hostnameWidth = ctx.measureText(displayHostname).width;
-
-    while (hostnameWidth > maxHostnameWidth && displayHostname.length > 3) {
-        displayHostname = displayHostname.slice(0, -4) + '...';
-        hostnameWidth = ctx.measureText(displayHostname).width;
-    }
-
-    ctx.fillText(displayHostname, contentStartX + 20, 28);
-
-    // Stats
-    ctx.font = '14px sans-serif';
-    ctx.fillStyle = '#9ca3af';
-
-    const stats = [
-        `Map: ${serverData.mapname || 'Unknown'}`,
-        `Players: ${serverData.numplayers || 0}/${serverData.maxplayers || 0}`,
-        `Mode: ${serverData.gametype || 'Unknown'}`
-    ];
-
-    let xPos = contentStartX + 20;
-    stats.forEach((stat) => {
-        ctx.fillText(stat, xPos, 55);
-        xPos += ctx.measureText(stat).width + 20;
-    });
-
-    // Player progress bar
-    const barX = contentStartX + 20;
-    const barY = 70;
-    const barWidth = 240; // Increased for larger banner
-    const barHeight = 6;
-
-    // Background bar
-    ctx.fillStyle = '#374151';
-    ctx.fillRect(barX, barY, barWidth, barHeight);
-
-    // Progress bar
-    const playerPercentage = serverData.maxplayers > 0
-        ? (serverData.numplayers / serverData.maxplayers) * 100
-        : 0;
-    ctx.fillStyle = '#10b981';
-    ctx.fillRect(barX, barY, (barWidth * playerPercentage) / 100, barHeight);
-
-    // Allied Intel branding
-    ctx.font = 'bold 12px sans-serif';
-    ctx.fillStyle = '#6366f1';
-    ctx.textAlign = 'right';
-    ctx.fillText('ALLIED-INTEL', width - 15, height - 12);
-
-    // Convert to JPEG buffer with 100% quality
-    const buffer = canvas.toBuffer('image/jpeg', { quality: 1.0 });
-    console.log('Banner generated successfully, buffer size:', buffer.length);
-
-    // Set headers
-    setHeader(event, 'Content-Type', 'image/jpeg');
-    setHeader(event, 'Cache-Control', 'public, max-age=60'); // Cache for 1 minute
-
-    return buffer;
-} catch (error) {
-    console.error('Banner generation error:', error);
-
-    // Return a simple error banner
-    const width = 550;
-    const height = 95;
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
-
-    ctx.fillStyle = '#1f2937';
-    ctx.fillRect(0, 0, width, height);
-
-    ctx.strokeStyle = '#374151';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(0, 0, width, height);
-
-    ctx.fillStyle = '#ef4444';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.fillText('Server Offline or Error', 20, 35);
-
-    const buffer = canvas.toBuffer('image/jpeg', { quality: 1.0 });
-    setHeader(event, 'Content-Type', 'image/jpeg');
-    return buffer;
-}
 });
