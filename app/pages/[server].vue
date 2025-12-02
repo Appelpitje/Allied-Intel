@@ -25,7 +25,27 @@ const { data: serverData, error } = await useAsyncData(
 if (serverData.value) {
   const s = serverData.value;
   const title = s.hostname || `${ip}:${port}`;
-  const description = `Map: ${s.mapname} | Players: ${s.numplayers}/${s.maxplayers} | Game: ${s.gametype}`;
+  
+  // Extract players
+  const playerNames = [];
+  let i = 0;
+  while (s[`player_${i}`]) {
+    const p = s[`player_${i}`];
+    if (p.name) playerNames.push(p.name);
+    i++;
+  }
+
+  let description = `Map: ${s.mapname} | Players: ${s.numplayers}/${s.maxplayers} | Game: ${s.gametype}`;
+  
+  if (playerNames.length > 0) {
+    const playersStr = playerNames.join(', ');
+    // Truncate if too long (Discord limits description)
+    const maxLen = 150; 
+    const truncatedPlayers = playersStr.length > maxLen 
+      ? playersStr.substring(0, maxLen) + '...' 
+      : playersStr;
+    description += `\nOnline: ${truncatedPlayers}`;
+  }
   
   // Determine color based on ping (approximate since ping is per-player, but we can use a default)
   const themeColor = '#4F46E5'; // Indigo-600

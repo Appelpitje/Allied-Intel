@@ -250,7 +250,9 @@
                 <DiscordEmbedPreview 
                   v-if="serverData" 
                   :server="{ ...serverData, ip, port }" 
-                  :game="game" 
+                  :game="game"
+                  :image="getMapImage(serverData.mapname)"
+                  :players="players"
                 />
               </div>
 
