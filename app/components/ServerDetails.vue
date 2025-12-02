@@ -90,8 +90,14 @@
                        <div class="text-gray-400 text-sm font-medium mb-1">Server Address</div>
                        <div class="text-white font-mono text-lg truncate">{{ ip }}:{{ port }}</div>
                        <button @click="copyIp" class="mt-2 flex items-center gap-1.5 text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors">
-                          <ClipboardDocumentIcon class="w-3.5 h-3.5" />
-                          Copy IP Address
+                          <template v-if="ipCopied">
+                             <CheckIcon class="w-3.5 h-3.5 text-green-400" />
+                             <span class="text-green-400">Copied!</span>
+                          </template>
+                          <template v-else>
+                             <ClipboardDocumentIcon class="w-3.5 h-3.5" />
+                             Copy IP Address
+                          </template>
                        </button>
                     </div>
                  </div>
@@ -222,8 +228,14 @@
               <h3 class="font-medium text-gray-200 mb-4">Quick Connect</h3>
               
               <button @click="copyIp" class="w-full py-3 bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-500 hover:to-yellow-600 text-white rounded-lg font-medium shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 mb-3 border border-yellow-500/20">
-                 <ClipboardDocumentIcon class="w-5 h-5" />
-                 Copy Server IP
+                 <template v-if="ipCopied">
+                    <CheckIcon class="w-5 h-5" />
+                    Copied!
+                 </template>
+                 <template v-else>
+                    <ClipboardDocumentIcon class="w-5 h-5" />
+                    Copy Server IP
+                 </template>
               </button>
               
               <div class="text-center">
@@ -257,8 +269,14 @@
               </div>
 
               <button @click="copyLink" class="w-full py-2 bg-[#5865F2] hover:bg-[#4752C4] text-white rounded-lg font-medium shadow transition-colors flex items-center justify-center gap-2 text-sm">
-                 <LinkIcon class="w-4 h-4" />
-                 Copy Link
+                 <template v-if="linkCopied">
+                    <CheckIcon class="w-4 h-4" />
+                    Copied!
+                 </template>
+                 <template v-else>
+                    <LinkIcon class="w-4 h-4" />
+                    Copy Link
+                 </template>
               </button>
            </div>
 
@@ -280,7 +298,8 @@ import {
   ClipboardDocumentIcon, 
   UserGroupIcon, 
   SignalIcon,
-  LinkIcon
+  LinkIcon,
+  CheckIcon
 } from '@heroicons/vue/24/outline';
 import mapConfig from '../../assets/maps.json';
 
@@ -299,6 +318,8 @@ const serverData = ref<any>(props.initialData || null);
 const players = ref<any[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
+const ipCopied = ref(false);
+const linkCopied = ref(false);
 
 // Computed
 const isPrivate = computed(() => {
@@ -370,13 +391,22 @@ const getPingDotColor = (ping: string | number) => {
 
 const copyIp = () => {
   const address = `${props.ip}:${props.port}`;
-  navigator.clipboard.writeText(address);
-  // Could add toast here
+  navigator.clipboard.writeText(address).then(() => {
+     ipCopied.value = true;
+     setTimeout(() => {
+        ipCopied.value = false;
+     }, 2000);
+  });
 };
 
 const copyLink = () => {
   const url = window.location.href;
-  navigator.clipboard.writeText(url);
+  navigator.clipboard.writeText(url).then(() => {
+     linkCopied.value = true;
+     setTimeout(() => {
+        linkCopied.value = false;
+     }, 2000);
+  });
 };
 
 // Map images logic

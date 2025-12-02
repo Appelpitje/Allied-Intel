@@ -197,8 +197,14 @@
                    @click.stop="copyAddress(server)" 
                    class="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg border border-gray-600 hover:border-gray-500 transition-all duration-200 text-sm font-medium active:scale-95 shrink-0 group-copy"
                  >
-                    <ClipboardDocumentIcon class="w-4 h-4 group-copy-hover:text-indigo-300" />
-                    <span>Copy</span>
+                    <template v-if="copiedServerId === server.id">
+                      <CheckIcon class="w-4 h-4 text-green-400" />
+                      <span class="text-green-400">Copied!</span>
+                    </template>
+                    <template v-else>
+                      <ClipboardDocumentIcon class="w-4 h-4 group-copy-hover:text-indigo-300" />
+                      <span>Copy</span>
+                    </template>
                  </button>
               </div>
            </div>
@@ -275,8 +281,14 @@
                    @click.stop="copyAddress(server)" 
                    class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-600 rounded-md text-xs font-medium text-gray-200 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-indigo-500 transition-colors"
                  >
-                    <ClipboardDocumentIcon class="w-3.5 h-3.5" />
-                    Copy
+                    <template v-if="copiedServerId === server.id">
+                      <CheckIcon class="w-3.5 h-3.5 text-green-400" />
+                      <span class="text-green-400">Copied!</span>
+                    </template>
+                    <template v-else>
+                      <ClipboardDocumentIcon class="w-3.5 h-3.5" />
+                      Copy
+                    </template>
                  </button>
               </td>
             </tr>
@@ -298,7 +310,8 @@ import {
   SignalIcon,
   MapIcon,
   UserGroupIcon,
-  ClipboardDocumentIcon
+  ClipboardDocumentIcon,
+  CheckIcon
 } from '@heroicons/vue/24/outline';
 import { Switch, SwitchGroup, SwitchLabel, Listbox, ListboxButton, ListboxOptions, ListboxOption } from '@headlessui/vue';
 import mapConfig from '../../assets/maps.json';
@@ -333,6 +346,7 @@ const searchQuery = ref('');
 const selectedGametype = ref('All Types');
 const hideEmpty = ref(false);
 const hidePassworded = ref(false);
+const copiedServerId = ref<string | null>(null);
 
 // Computed Properties
 const gameName = computed(() => {
@@ -487,7 +501,12 @@ const getPlayerBarColor = (current: any, max: any) => {
 const copyAddress = (server: any) => {
   const address = `${server.ip}:${server.hostport}`;
   navigator.clipboard.writeText(address).then(() => {
-    // Optional: Add toast notification logic here
+    copiedServerId.value = server.id;
+    setTimeout(() => {
+      if (copiedServerId.value === server.id) {
+        copiedServerId.value = null;
+      }
+    }, 2000);
   }).catch(err => {
     console.error('Failed to copy:', err);
   });
