@@ -1,11 +1,14 @@
 <script setup lang="ts">
+import mapConfig from '../../assets/maps.json';
+
 const route = useRoute();
 const router = useRouter();
 const { getServerDetails } = use333Networks();
+const url = useRequestURL();
 
 // Extract IP and Port from route param "server" (ip:port)
 const serverParam = route.params.server as string;
-const [ip, portStr] = serverParam ? serverParam.split(':') : ['', ''];
+const [ip = '', portStr = ''] = serverParam ? serverParam.split(':') : [];
 const port = portStr ? parseInt(portStr) : NaN;
 
 // Get game from query param or history state, default to 'mohaa'
@@ -35,7 +38,8 @@ if (serverData.value) {
     i++;
   }
 
-  let description = `Map: ${s.mapname} | Players: ${s.numplayers}/${s.maxplayers} | Game: ${s.gametype}`;
+  // Format description with newlines for "fields" look
+  let description = `Map: ${s.mapname}\nPlayers: ${s.numplayers}/${s.maxplayers}\nGame: ${s.gametype}\nIP: ${ip}:${port}`;
   
   if (playerNames.length > 0) {
     const playersStr = playerNames.join(', ');
@@ -44,17 +48,34 @@ if (serverData.value) {
     const truncatedPlayers = playersStr.length > maxLen 
       ? playersStr.substring(0, maxLen) + '...' 
       : playersStr;
-    description += `\nOnline: ${truncatedPlayers}`;
+    description += `\n\nOnline Players:\n${truncatedPlayers}`;
   }
   
   // Determine color based on ping (approximate since ping is per-player, but we can use a default)
   const themeColor = '#4F46E5'; // Indigo-600
 
-  // Map Image URL (Best effort)
-  // Note: This needs to be an absolute URL for Discord. 
-  // Since we don't know the deployment domain easily in all envs, we'll try to use a public one or relative if configured.
-  // For now, using a generic placeholder or gametracker if available.
-  const mapImage = `https://image.gametracker.com/images/maps/160x120/${game.value}/${s.mapname}.jpg`;
+  // Map Image URL
+  // Default to Gametracker
+  let mapImage = `https://image.gametracker.com/images/maps/160x120/${game.value}/${s.mapname}.jpg`;
+  
+  // Check if we have a local high-res image
+  if (s.mapname) {
+    const cleanMapName = s.mapname.toLowerCase();
+    const config = mapConfig as Record<string, string>;
+    let localPath = config[cleanMapName];
+    
+    // Try basename if full path not found
+    if (!localPath && cleanMapName.includes('/')) {
+      const parts = cleanMapName.split('/');
+      const baseName = parts[parts.length - 1];
+      localPath = config[baseName];
+    }
+
+    if (localPath) {
+      // Construct absolute URL using current host
+      mapImage = `${url.protocol}//${url.host}${localPath}`;
+    }
+  }
 
   useSeoMeta({
     title: title,

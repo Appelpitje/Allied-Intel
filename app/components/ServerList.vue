@@ -119,7 +119,7 @@
                 class="absolute inset-0 transition-all duration-500"
                 :class="[
                   hasCustomMapImage(server.mapname) 
-                    ? 'bg-cover bg-center opacity-50' 
+                    ? 'bg-cover bg-center opacity-80' 
                     : 'bg-[url(\'https://www.transparenttextures.com/patterns/carbon-fibre.png\')] opacity-30'
                 ]"
                 :style="hasCustomMapImage(server.mapname) ? { backgroundImage: `url('${getMapImage(server.mapname)}')` } : {}"
@@ -311,10 +311,7 @@ const emit = defineEmits(['select-server', 'update:game']);
 const { getServers, getServerDetails } = use333Networks();
 
 // Map images logic
-const mapAssets = import.meta.glob('../../assets/images/maps/*.{webp,png,jpg,jpeg}', {
-  eager: true,
-  import: 'default',
-}) as Record<string, string>;
+// We now use public images defined in maps.json
 
 const servers = ref<any[]>([]);
 const loading = ref(true);
@@ -517,22 +514,7 @@ const getMapImage = (mapName: string) => {
     }
   }
 
-  if (configPath) {
-    // Try to find the asset in glob results
-    // We try common variations of the path
-    const variants = [
-      configPath,
-      `/${configPath}`,
-      `~/${configPath}`,
-      `@/${configPath}`,
-      `../../${configPath}`
-    ];
-    
-    for (const v of variants) {
-      if (v && mapAssets[v]) return mapAssets[v];
-    }
-  }
-  return null;
+  return configPath || null;
 };
 
 const hasCustomMapImage = (mapName: string) => {
