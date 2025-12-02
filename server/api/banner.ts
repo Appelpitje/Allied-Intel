@@ -1,17 +1,10 @@
 import satori from 'satori';
+import { html } from 'satori-html';
 import { Resvg, initWasm } from '@resvg/resvg-wasm';
 // @ts-ignore
 import resvgWasm from '@resvg/resvg-wasm/index_bg.wasm';
-import mapConfig from '../../assets/maps.json';
-
-// Helper to create Satori nodes
-const h = (type: string, props: any = {}, children: any[] | string = []) => ({
-    type,
-    props: {
-        ...props,
-        children,
-    },
-});
+import { mapImages } from '../utils/mapsBase64';
+import { fontBase64 } from '../utils/fontData';
 
 export default defineEventHandler(async (event) => {
     const query = getQuery(event);
@@ -32,7 +25,6 @@ export default defineEventHandler(async (event) => {
             await initWasm(resvgWasm);
         } catch (e) {
             // Ignore if already initialized
-             // console.log('WASM init error (might be already initialized):', e);
         }
 
         // Fetch server details
@@ -40,45 +32,29 @@ export default defineEventHandler(async (event) => {
             query: { game, ip, port }
         });
 
-        // 1. Load Font (Inter Bold)
-        // Using a reliable CDN for the font file
-        const fontData = await fetch('https://cdn.jsdelivr.net/npm/@fontsource/inter/files/inter-latin-700-normal.woff')
-            .then(res => res.arrayBuffer());
+        // 1. Load Font (Roboto Bold)
+        // Satori expects a clean ArrayBuffer
+        const buffer = Buffer.from(fontBase64, 'base64');
+        if (!fontBase64 || buffer.length === 0) {
+            throw new Error('Font data is missing or empty');
+        }
+        const fontData = new Uint8Array(buffer).buffer;
 
         // 2. Load Map Image
         let mapImageData = '';
         try {
             const mapName = serverData.mapname?.toLowerCase() || '';
-            let mapPath = (mapConfig as Record<string, string>)[mapName];
-
-            if (!mapPath && mapName.includes('/')) {
+            
+            let imageBase64 = mapImages[mapName];
+            if (!imageBase64 && mapName.includes('/')) {
                 const baseName = mapName.split('/').pop();
                 if (baseName) {
-                    mapPath = (mapConfig as Record<string, string>)[baseName];
+                    imageBase64 = mapImages[baseName];
                 }
             }
 
-            if (mapPath) {
-                // Construct full URL using request origin
-                const reqUrl = getRequestURL(event);
-                // Remove leading slash if present in mapPath to avoid double slashes
-                const cleanMapPath = mapPath.startsWith('/') ? mapPath.slice(1) : mapPath;
-                const imageUrl = `${reqUrl.origin}/${cleanMapPath}`;
-
-                try {
-                    const imageBuffer = await fetch(imageUrl).then(res => {
-                        if (!res.ok) throw new Error(`Failed to fetch image: ${res.statusText}`);
-                        return res.arrayBuffer();
-                    });
-                    
-                    const base64 = Buffer.from(imageBuffer).toString('base64');
-                    // Determine mime type based on extension
-                    const ext = mapPath.split('.').pop()?.toLowerCase();
-                    const mime = ext === 'png' ? 'image/png' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/webp';
-                    mapImageData = `data:${mime};base64,${base64}`;
-                } catch (e) {
-                    console.error('Failed to fetch map image:', imageUrl, e);
-                }
+            if (imageBase64) {
+                mapImageData = imageBase64;
             }
         } catch (e) {
             console.error('Map image processing error:', e);
@@ -95,154 +71,62 @@ export default defineEventHandler(async (event) => {
         };
 
         const hostname = serverData.hostname ? decodeHtmlEntities(serverData.hostname) : `${ip}:${port}`;
-        // Truncate hostname manually if needed, but flexbox handles overflow better
-        // Let's just truncate strictly to avoid layout issues
         const displayHostname = hostname.length > 35 ? hostname.slice(0, 32) + '...' : hostname;
         
         const statsText = [
             `Map: ${serverData.mapname || 'Unknown'}`,
             `Players: ${serverData.numplayers || 0}/${serverData.maxplayers || 0}`,
             `Mode: ${serverData.gametype || 'Unknown'}`
-        ].join(' • ');
+        ].join(' | ');
 
         const playerPercentage = serverData.maxplayers > 0
             ? (serverData.numplayers / serverData.maxplayers) * 100
             : 0;
 
-        // 4. Define Layout (Satori)
+        // 4. Define Layout using satori-html
         const height = 95;
         const width = 550;
 
-        const markup = h('div', {
-            style: {
-                height: '100%',
-                width: '100%',
-                display: 'flex',
-                flexDirection: 'row',
-                background: 'linear-gradient(90deg, #1f2937 0%, #111827 100%)',
-                border: '2px solid #374151',
-                position: 'relative',
-                overflow: 'hidden',
-                fontFamily: 'Inter',
-            }
-        }, [
-            // Map Image Background (Right side)
-            mapImageData ? h('div', {
-                style: {
-                    position: 'absolute',
-                    right: 0,
-                    top: 0,
-                    width: '180px',
-                    height: '100%',
-                    display: 'flex',
-                    backgroundImage: `url(${mapImageData})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    opacity: 0.5,
-                    maskImage: 'linear-gradient(to left, black 0%, transparent 100%)', // This might not work in Satori yet
-                    // Alternative gradient overlay
-                }
-            }, [
-                // Gradient Overlay for smooth transition
-                h('div', {
-                    style: {
-                        position: 'absolute',
-                        left: 0,
-                        top: 0,
-                        width: '100%',
-                        height: '100%',
-                        background: 'linear-gradient(to right, #1f2937 0%, transparent 100%)',
-                    }
-                })
-            ]) : null,
+        // Construct HTML string
+        const markup = html(`
+            <div style="height: 100%; width: 100%; display: flex; flex-direction: row; background: linear-gradient(90deg, #1f2937 0%, #111827 100%); border: 2px solid #374151; position: relative; overflow: hidden; font-family: Inter;">
+                
+                <!-- Map Image Background -->
+                ${mapImageData ? `
+                <div style="position: absolute; right: 0; top: 0; width: 180px; height: 100%; display: flex;">
+                    <img src="${mapImageData}" style="position: absolute; right: 0; top: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.5;" />
+                    <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: linear-gradient(to right, #1f2937 0%, transparent 100%);"></div>
+                </div>
+                ` : ''}
 
-            // Content Container
-            h('div', {
-                style: {
-                    display: 'flex',
-                    flexDirection: 'column',
-                    padding: '20px',
-                    width: '100%',
-                    position: 'relative',
-                    zIndex: 10,
-                }
-            }, [
-                // Top Row: Status + Hostname
-                h('div', {
-                    style: {
-                        display: 'flex',
-                        alignItems: 'center',
-                        marginBottom: '8px',
-                    }
-                }, [
-                    // Status Dot
-                    h('div', {
-                        style: {
-                            width: '12px',
-                            height: '12px',
-                            borderRadius: '50%',
-                            backgroundColor: '#10b981',
-                            marginRight: '12px',
-                        }
-                    }),
-                    // Hostname
-                    h('div', {
-                        style: {
-                            color: '#ffffff',
-                            fontSize: '16px',
-                            fontWeight: 700,
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            maxWidth: '320px',
-                        }
-                    }, displayHostname)
-                ]),
+                <!-- Content Container -->
+                <div style="display: flex; flex-direction: column; padding: 20px; width: 100%; position: relative;">
+                    
+                    <!-- Top Row: Status + Hostname -->
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <div style="display: flex; width: 12px; height: 12px; border-radius: 50%; background-color: #10b981; margin-right: 12px;"></div>
+                        <div style="display: flex; color: #ffffff; font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px;">
+                            ${displayHostname}
+                        </div>
+                    </div>
 
-                // Stats Row
-                h('div', {
-                    style: {
-                        color: '#9ca3af',
-                        fontSize: '13px',
-                        marginBottom: '12px',
-                        display: 'flex',
-                    }
-                }, statsText),
+                    <!-- Stats Row -->
+                    <div style="color: #9ca3af; font-size: 13px; margin-bottom: 12px; display: flex;">
+                        ${statsText}
+                    </div>
 
-                // Progress Bar
-                h('div', {
-                    style: {
-                        width: '240px',
-                        height: '6px',
-                        backgroundColor: '#374151',
-                        display: 'flex',
-                        borderRadius: '2px',
-                        overflow: 'hidden',
-                    }
-                }, [
-                    h('div', {
-                        style: {
-                            width: `${playerPercentage}%`,
-                            height: '100%',
-                            backgroundColor: '#10b981',
-                        }
-                    })
-                ]),
-            ]),
+                    <!-- Progress Bar -->
+                    <div style="width: 240px; height: 6px; background-color: #374151; display: flex; border-radius: 2px; overflow: hidden;">
+                        <div style="display: flex; width: ${playerPercentage}%; height: 100%; background-color: #10b981;"></div>
+                    </div>
+                </div>
 
-            // Branding
-            h('div', {
-                style: {
-                    position: 'absolute',
-                    bottom: '10px',
-                    right: '15px',
-                    color: '#6366f1',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    zIndex: 20,
-                }
-            }, 'ALLIED-INTEL')
-        ]);
+                <!-- Branding -->
+                <div style="display: flex; position: absolute; bottom: 10px; right: 15px; color: #6366f1; font-size: 12px; font-weight: 700;">
+                    ALLIED-INTEL
+                </div>
+            </div>
+        `);
 
         // 5. Generate SVG
         const svg = await satori(markup, {
@@ -275,10 +159,6 @@ export default defineEventHandler(async (event) => {
 
     } catch (error) {
         console.error('Banner generation error:', error);
-        
-        // Error Fallback (Simplified)
-        // We can return a basic SVG or use Satori again for error state
-        // For now, just return text error
         throw createError({
             statusCode: 500,
             statusMessage: 'Failed to generate banner'
