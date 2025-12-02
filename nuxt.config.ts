@@ -8,9 +8,4 @@ export default defineNuxtConfig({
       autoprefixer: {},
     },
   },
-  nitro: {
-    experimental: {
-      wasm: true
-    }
-  }
 })

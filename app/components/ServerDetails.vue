@@ -262,16 +262,6 @@
               </button>
            </div>
 
-           <!-- Server Banner -->
-           <ServerBanner 
-             v-if="serverData"
-             :server="serverData"
-             :game="game"
-             :ip="ip"
-             :port="port"
-             :image="getMapImage(serverData.mapname)"
-             :players="players"
-           />
         </div>
       </div>
 
