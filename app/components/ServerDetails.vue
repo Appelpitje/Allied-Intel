@@ -223,27 +223,31 @@
               </div>
            </div>
 
-           <!-- Quick Connect -->
+           <!-- Server Widget Banner -->
            <div class="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-lg">
-              <h3 class="font-medium text-gray-200 mb-4">Quick Connect</h3>
+              <h3 class="font-medium text-gray-200 mb-4">Server Widget</h3>
               
-              <button @click="copyIp" class="w-full py-3 bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-500 hover:to-yellow-600 text-white rounded-lg font-medium shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 mb-3 border border-yellow-500/20">
-                 <template v-if="ipCopied">
-                    <CheckIcon class="w-5 h-5" />
+              <div class="mb-4 rounded-lg overflow-hidden bg-gray-900/50 border border-gray-700/50">
+                <iframe 
+                  :src="`https://serverinfo.appelpitje.dev/api/banner/${ip}/${port}/widget`" 
+                  frameborder="0" 
+                  scrolling="no" 
+                  width="100%" 
+                  height="656"
+                  class="w-full"
+                ></iframe>
+              </div>
+
+              <button @click="copyIframe" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium shadow transition-colors flex items-center justify-center gap-2 text-sm">
+                 <template v-if="iframeCopied">
+                    <CheckIcon class="w-4 h-4" />
                     Copied!
                  </template>
                  <template v-else>
-                    <ClipboardDocumentIcon class="w-5 h-5" />
-                    Copy Server IP
+                    <ClipboardDocumentIcon class="w-4 h-4" />
+                    Copy Iframe Code
                  </template>
               </button>
-              
-              <div class="text-center">
-                 <div class="text-xs text-gray-500 mb-1">Open game console and type:</div>
-                 <div class="bg-black/30 rounded px-2 py-1 text-xs font-mono text-gray-400 select-all">
-                    connect {{ ip }}:{{ port }}
-                 </div>
-              </div>
            </div>
 
            <!-- Share / Discord Preview -->
@@ -320,6 +324,7 @@ const loading = ref(true);
 const error = ref<string | null>(null);
 const ipCopied = ref(false);
 const linkCopied = ref(false);
+const iframeCopied = ref(false);
 
 // Computed
 const isPrivate = computed(() => {
@@ -405,6 +410,16 @@ const copyLink = () => {
      linkCopied.value = true;
      setTimeout(() => {
         linkCopied.value = false;
+     }, 2000);
+  });
+};
+
+const copyIframe = () => {
+  const iframeCode = `<iframe src="https://serverinfo.appelpitje.dev/api/banner/${props.ip}/${props.port}/widget" frameborder="0" scrolling="no" width="540" height="656"></iframe>`;
+  navigator.clipboard.writeText(iframeCode).then(() => {
+     iframeCopied.value = true;
+     setTimeout(() => {
+        iframeCopied.value = false;
      }, 2000);
   });
 };
