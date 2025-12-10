@@ -121,6 +121,7 @@ const chartOptions = computed(() => {
           drawBorder: false
         },
         ticks: {
+          display: false,
           color: '#9CA3AF', // Gray-400
           maxTicksLimit: 8,
           maxRotation: 0
