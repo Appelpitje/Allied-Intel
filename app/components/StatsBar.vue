@@ -55,7 +55,7 @@ const props = defineProps<{
   game?: 'mohaa' | 'mohaas' | 'mohaab';
 }>();
 
-const { getServers } = use333Networks();
+const { getAllServers } = useServerInfo();
 
 // Total stats (all games)
 const totalServersOnline = ref(0);
@@ -80,18 +80,15 @@ const fetchStats = async () => {
     let tListed = 0;
     let tPlayers = 0;
 
-    // Fetch all games in parallel
-    const results = await Promise.all(games.map(g => getServers(g)));
+    // Fetch all games in one request
+    const allData = await getAllServers();
 
-    results.forEach((response, index) => {
-      const gameKey = games[index];
-      if (Array.isArray(response) && response.length >= 2) {
-        const serverList = response[0];
-        const metadata = response[1];
-        
-        const online = serverList.length;
-        const listed = metadata.total || 0;
-        const players = metadata.players || 0;
+    games.forEach((gameKey) => {
+      const gameData = allData[gameKey];
+      if (gameData && gameData.servers && gameData.metadata) {
+        const online = gameData.servers.length;
+        const listed = gameData.metadata.total || 0;
+        const players = gameData.metadata.players || 0;
 
         // Add to totals
         tOnline += online;

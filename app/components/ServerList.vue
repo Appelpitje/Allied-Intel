@@ -321,7 +321,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits(['select-server', 'update:game']);
-const { getServers, getServerDetails } = use333Networks();
+const { getServers, getServerDetails, extractPlayers } = useServerInfo();
 
 // Map images logic
 // We now use public images defined in maps.json
@@ -397,15 +397,15 @@ const fetchServers = async () => {
   error.value = null;
   try {
     const response = await getServers(props.game || 'mohaa');
-    // API returns [ [serverList], { metadata } ]
-    if (Array.isArray(response) && response.length >= 2) {
-      servers.value = response[0].map((server: any) => ({
+    // API returns { servers: [...], metadata: {...} }
+    if (response && response.servers) {
+      servers.value = response.servers.map((server: any) => ({
         ...server,
         hostname: decodeHtmlEntities(server.hostname)
       }));
-      const metadata = response[1];
-      totalPlayers.value = metadata.players || 0;
-      totalServers.value = metadata.total || 0;
+      const metadata = response.metadata;
+      totalPlayers.value = metadata?.players || 0;
+      totalServers.value = metadata?.total || 0;
 
       // Fetch ping for servers with players
       fetchPlayerPings();
@@ -429,19 +429,17 @@ const fetchPlayerPings = async () => {
   for (const server of serversWithPlayers) {
     try {
       const details = await getServerDetails(server.ip, server.hostport, props.game || 'mohaa');
+      const players = extractPlayers(details);
       let totalPing = 0;
       let playerCount = 0;
       
-      // Extract players and sum pings
-      let i = 0;
-      while (details[`player_${i}`]) {
-        const player = details[`player_${i}`];
-        const ping = parseInt(player.ping);
+      // Sum pings from players
+      for (const player of players) {
+        const ping = parseInt(String(player.ping));
         if (!isNaN(ping) && ping !== 999) {
           totalPing += ping;
           playerCount++;
         }
-        i++;
       }
 
       if (playerCount > 0) {

@@ -3,7 +3,7 @@ import mapConfig from '../../assets/maps.json';
 
 const route = useRoute();
 const router = useRouter();
-const { getServerDetails } = use333Networks();
+const { getServerDetails, extractPlayers } = useServerInfo();
 const url = useRequestURL();
 
 // Extract IP and Port from route param "server" (ip:port)
@@ -29,14 +29,9 @@ if (serverData.value) {
   const s = serverData.value;
   const title = s.hostname || `${ip}:${port}`;
   
-  // Extract players
-  const playerNames = [];
-  let i = 0;
-  while (s[`player_${i}`]) {
-    const p = s[`player_${i}`];
-    if (p.name) playerNames.push(p.name);
-    i++;
-  }
+  // Extract player names
+  const players = extractPlayers(s);
+  const playerNames = players.map(p => p.name).filter(Boolean);
 
   // Format description with newlines for "fields" look
   let description = `Map: ${s.mapname}\nPlayers: ${s.numplayers}/${s.maxplayers}\nGame: ${s.gametype}\nIP: ${ip}:${port}`;

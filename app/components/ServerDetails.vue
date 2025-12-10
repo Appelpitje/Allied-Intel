@@ -316,7 +316,7 @@ const props = defineProps<{
 
 defineEmits(['back']);
 
-const { getServerDetails } = use333Networks();
+const { getServerDetails, extractPlayers } = useServerInfo();
 
 const serverData = ref<any>(props.initialData || null);
 const players = ref<any[]>([]);
@@ -460,18 +460,11 @@ const fetchDetails = async () => {
     // Update server data
     serverData.value = { ...serverData.value, ...data };
     
-    // Extract players
-    const playerList = [];
-    let i = 0;
-    while (data[`player_${i}`]) {
-      const player = { ...data[`player_${i}`] };
-      // Decode player name
-      if (player.name) {
-        player.name = decodeHtmlEntities(player.name);
-      }
-      playerList.push(player);
-      i++;
-    }
+    // Extract players using the helper
+    const playerList = extractPlayers(data).map(player => ({
+      ...player,
+      name: player.name ? decodeHtmlEntities(player.name) : player.name
+    }));
     players.value = playerList;
     
     // Update local numplayers count from detailed list length if available, 
