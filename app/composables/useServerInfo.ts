@@ -137,6 +137,19 @@ export const useServerInfo = () => {
   };
 
   /**
+   * Fetches most played maps statistics.
+   */
+  const getMostPlayedMaps = async (): Promise<StatsResponse> => {
+    try {
+      const data = await $fetch<StatsResponse>(`${API_BASE}/v1/statistics/most-played-maps`);
+      return data;
+    } catch (error) {
+      console.error("Failed to fetch statistics:", error);
+      throw error;
+    }
+  };
+
+  /**
    * Extracts players from server details response.
    * Player data is stored as player_0, player_1, etc.
    */
@@ -162,5 +175,19 @@ export const useServerInfo = () => {
     getServerDetails,
     getServerHistory,
     extractPlayers,
+    getMostPlayedMaps,
   };
 };
+
+export interface MapStats {
+  mapname: string;
+  mapFullName: string;
+  count: number;
+}
+
+export interface StatsResponse {
+  mohaa: MapStats;
+  mohaas: MapStats;
+  mohaab: MapStats;
+  all: MapStats;
+}

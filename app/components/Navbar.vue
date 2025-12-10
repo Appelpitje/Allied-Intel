@@ -45,6 +45,7 @@ import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuIt
 import { Bars3Icon, BellIcon, XMarkIcon, WifiIcon } from '@heroicons/vue/24/outline'
 
 const navigation = [
-
+  { name: 'Home', href: '/', current: false },
+  { name: 'Statistics', href: '/statistics', current: false },
 ]
 </script>
