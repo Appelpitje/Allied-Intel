@@ -61,6 +61,7 @@ const chartData = computed(() => {
         },
         borderColor: '#4F46E5', // Indigo-600
         borderWidth: 2,
+        pointRadius: 0,
         pointBackgroundColor: '#4F46E5',
         pointBorderColor: '#fff',
         pointHoverBackgroundColor: '#fff',
