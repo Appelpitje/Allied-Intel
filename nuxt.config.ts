@@ -8,4 +8,11 @@ export default defineNuxtConfig({
       autoprefixer: {},
     },
   },
+  runtimeConfig: {
+    public: {
+      apiBase: process.env.NODE_ENV === 'development'
+        ? 'http://localhost:10000/api'
+        : 'https://serverinfo.appelpitje.dev/api'
+    }
+  }
 })

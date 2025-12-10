@@ -223,6 +223,21 @@
               </div>
            </div>
 
+           <!-- Player Count History -->
+           <div class="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-lg h-80">
+              <div class="flex items-center gap-3 mb-4">
+                 <ClockIcon class="w-5 h-5 text-indigo-500" />
+                 <h3 class="font-medium text-gray-200">24h History</h3>
+              </div>
+              <div class="h-60">
+                <ServerHistoryChart v-if="historyData.length > 0" :history="historyData" />
+                <div v-else class="flex justify-center items-center h-full text-gray-400 text-sm">
+                   <div v-if="historyLoading" class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+                   <span v-else>No history available</span>
+                </div>
+              </div>
+           </div>
+
            <!-- Server Widget Banner -->
            <div class="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-lg">
               <h3 class="font-medium text-gray-200 mb-4">Server Widget</h3>
@@ -303,9 +318,11 @@ import {
   UserGroupIcon, 
   SignalIcon,
   LinkIcon,
-  CheckIcon
+  CheckIcon,
+  ClockIcon
 } from '@heroicons/vue/24/outline';
 import mapConfig from '../../assets/maps.json';
+import ServerHistoryChart from './ServerHistoryChart.vue';
 
 const props = defineProps<{
   ip: string;
@@ -316,11 +333,13 @@ const props = defineProps<{
 
 defineEmits(['back']);
 
-const { getServerDetails, extractPlayers } = useServerInfo();
+const { getServerDetails, getServerHistory, extractPlayers } = useServerInfo();
 
 const serverData = ref<any>(props.initialData || null);
 const players = ref<any[]>([]);
+const historyData = ref<any[]>([]);
 const loading = ref(true);
+const historyLoading = ref(true);
 const error = ref<string | null>(null);
 const ipCopied = ref(false);
 const linkCopied = ref(false);
@@ -481,12 +500,26 @@ const fetchDetails = async () => {
   }
 };
 
+const fetchHistory = async () => {
+  historyLoading.value = true;
+  try {
+    const history = await getServerHistory(props.ip, props.port, props.game || 'mohaa');
+    historyData.value = history;
+  } catch (e) {
+    console.error("Failed to load server history", e);
+  } finally {
+    historyLoading.value = false;
+  }
+};
+
 onMounted(() => {
   fetchDetails();
+  fetchHistory();
 });
 
 watch(() => [props.ip, props.port, props.game], () => {
   fetchDetails();
+  fetchHistory();
 });
 </script>
 

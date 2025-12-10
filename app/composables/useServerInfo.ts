@@ -43,9 +43,10 @@ export interface Player {
   ping: number | string;
 }
 
-const API_BASE = 'https://serverinfo.appelpitje.dev/api';
-
 export const useServerInfo = () => {
+  const config = useRuntimeConfig();
+  const API_BASE = config.public.apiBase;
+
   /**
    * Fetches all servers for all game types in one request.
    * Uses /api/servers/mohaa/all endpoint
@@ -117,6 +118,25 @@ export const useServerInfo = () => {
   };
 
   /**
+   * Fetches server history for the last 24 hours.
+   */
+  const getServerHistory = async (
+    ip: string,
+    port: number,
+    game: 'mohaa' | 'mohaas' | 'mohaab' = 'mohaa'
+  ): Promise<{ timestamp: string; playerCount: number; maxPlayers: number }[]> => {
+    try {
+      const data = await $fetch<{ timestamp: string; playerCount: number; maxPlayers: number }[]>(
+        `${API_BASE}/servers/${game}/${ip}/${port}/history`
+      );
+      return data;
+    } catch (error) {
+      console.error(`Failed to fetch server history for ${ip}:${port}:`, error);
+      throw error;
+    }
+  };
+
+  /**
    * Extracts players from server details response.
    * Player data is stored as player_0, player_1, etc.
    */
@@ -140,6 +160,7 @@ export const useServerInfo = () => {
     getAllServers,
     getServers,
     getServerDetails,
+    getServerHistory,
     extractPlayers,
   };
 };
